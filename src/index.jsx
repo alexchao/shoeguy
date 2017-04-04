@@ -4,10 +4,15 @@ class TextInput extends React.Component {
         super(props);
     }
 
+    componentDidMount() {
+        this.inputEl.focus();
+    }
+
     render() {
         return (
             <form>
                 <input
+                 ref={(inputEl) => { this.inputEl = inputEl; }}
                  />
             </form>
         );
