@@ -21,6 +21,85 @@ class TextInput extends React.Component {
 }
 
 
+const makeDiffString = function(a, b) {
+
+    let m = new Array(a.length);
+    for (var i = 0; i < m.length; i++) {
+        m[i] = new Array(b.length);
+    }
+
+    // fill matrix
+    // 1 if characters match, 0 if not
+    for (var x = a.length - 1; x >= 0; x--) {
+        for (var y = b.length - 1; y >= 0; y--) {
+            if (a[x] === b[y]) {
+                if (x < a.length - 1 && y < b.length - 1 && m[x + 1][y + 1] > 0) {
+                    m[x][y] = m[x + 1][y + 1] + 1;
+                } else {
+                    m[x][y] = 1;
+                }
+            } else {
+                m[x][y] = 0;
+            }
+        }
+    }
+
+    var aIndex = 0;
+    var bIndex = 0;
+    let diffChunks = [];
+
+    var subtractionChunk = '';
+    var additionChunk = '';
+
+    while (aIndex < a.length && bIndex < b.length) {
+
+        var matchIndex = -1, k = bIndex;
+        while (k < b.length && matchIndex === -1) {
+            if (m[aIndex][k] > 1) {
+                matchIndex = k;
+            }
+            k++;
+        }
+
+        if (matchIndex === -1) {
+            subtractionChunk += a[aIndex];
+            aIndex += 1;
+        } else {
+            if (matchIndex > bIndex) {
+                additionChunk = b.substr(bIndex, matchIndex - bIndex);
+            }
+            // XXX: should this be inside the above if-statement?
+            bIndex = matchIndex;
+
+            if (!!subtractionChunk) {
+                diffChunks.push('[-' + subtractionChunk + ']');
+                subtractionChunk = '';
+            }
+            if (!!additionChunk) {
+                diffChunks.push('[+' + additionChunk + ']');
+                additionChunk = '';
+            }
+
+            var chunkLength = m[aIndex][bIndex];
+            diffChunks.push('[*' + a.substr(aIndex, chunkLength) + ']');
+
+            aIndex += chunkLength;
+            bIndex += chunkLength;
+        }
+    }
+
+    if (!!subtractionChunk) {
+        diffChunks.push('[-' + subtractionChunk + ']');
+    }
+
+    if (bIndex < b.length) {
+        diffChunks.push('[+' + b.substr(bIndex) + ']');
+    }
+
+    return diffChunks;
+};
+
+
 class TextCorrectionWidget extends React.Component {
 
     constructor(props) {
@@ -51,8 +130,8 @@ class TextCorrectionWidget extends React.Component {
     }
 
     updateDiffText() {
-        let newText = this.state.sourceText + ' => ' + this.state.correctedText;
-        this.setState({ diffText: newText });
+        let diffChunks = makeDiffString(this.state.sourceText, this.state.correctedText);
+        this.setState({ diffText: diffChunks.join(' ') });
     }
 
     render() {
