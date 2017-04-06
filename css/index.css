@@ -1,0 +1,11 @@
+.chunk-addition {
+	color: #008000;
+	border-bottom: 1px solid #aadaaa;
+}
+.chunk-subtraction {
+	color: #800000;
+	text-decoration: line-through;
+}
+.chunk-shared {
+	color: #000;
+}
