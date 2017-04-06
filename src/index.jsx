@@ -21,6 +21,20 @@ class TextInput extends React.Component {
 }
 
 
+const makeSubChunk = function(s) {
+    return { type: 'subtraction', value: s };
+};
+
+const makeAddChunk = function(s) {
+    return { type: 'addition', value: s };
+};
+
+const makeSharedChunk = function(s) {
+    return { type: 'shared', value: s };
+};
+
+
+// TODO: refactor this beast
 const makeDiffString = function(a, b) {
 
     let m = new Array(a.length);
@@ -72,16 +86,16 @@ const makeDiffString = function(a, b) {
             bIndex = matchIndex;
 
             if (!!subtractionChunk) {
-                diffChunks.push('[-' + subtractionChunk + ']');
+                diffChunks.push(makeSubChunk(subtractionChunk));
                 subtractionChunk = '';
             }
             if (!!additionChunk) {
-                diffChunks.push('[+' + additionChunk + ']');
+                diffChunks.push(makeAddChunk(additionChunk));
                 additionChunk = '';
             }
 
             var chunkLength = m[aIndex][bIndex];
-            diffChunks.push('[*' + a.substr(aIndex, chunkLength) + ']');
+            diffChunks.push(makeSharedChunk(a.substr(aIndex, chunkLength)));
 
             aIndex += chunkLength;
             bIndex += chunkLength;
@@ -89,15 +103,34 @@ const makeDiffString = function(a, b) {
     }
 
     if (!!subtractionChunk) {
-        diffChunks.push('[-' + subtractionChunk + ']');
+        diffChunks.push(makeSubChunk(subtractionChunk));
     }
 
     if (bIndex < b.length) {
-        diffChunks.push('[+' + b.substr(bIndex) + ']');
+        diffChunks.push(makeAddChunk(b.substr(bIndex)));
     }
 
     return diffChunks;
 };
+
+
+class TextDisplay extends React.Component {
+
+    constructor(props) {
+        super(props);
+    }
+
+    render() {
+        let textElements = this.props.diffChunks.map(function(c) {
+            let className = 'chunk-' + c.type;
+            return (
+                <span className={className}>{c.value}</span>
+            );
+        });
+        return (<div>{textElements}</div>);
+    }
+
+}
 
 
 class TextCorrectionWidget extends React.Component {
@@ -107,7 +140,7 @@ class TextCorrectionWidget extends React.Component {
         this.state = {
             sourceText: '',
             correctedText: '',
-            diffText: ''
+            diffChunks: []
         };
     }
 
@@ -131,7 +164,7 @@ class TextCorrectionWidget extends React.Component {
 
     updateDiffText() {
         let diffChunks = makeDiffString(this.state.sourceText, this.state.correctedText);
-        this.setState({ diffText: diffChunks.join(' ') });
+        this.setState({ diffChunks: diffChunks });
     }
 
     render() {
@@ -139,7 +172,8 @@ class TextCorrectionWidget extends React.Component {
             <div>
                 <div><TextInput handleChange={this.handleSourceChange.bind(this)} /></div>
                 <div><TextInput handleChange={this.handleCorrectedChange.bind(this)} /></div>
-                <p><strong>Corrected</strong>: { this.state.diffText }</p>
+                <p><strong>Corrected</strong>:</p>
+                <TextDisplay diffChunks={this.state.diffChunks} />
             </div>
         );
     }
