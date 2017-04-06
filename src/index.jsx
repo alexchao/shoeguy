@@ -104,6 +104,8 @@ const makeDiffString = function(a, b) {
 
     if (!!subtractionChunk) {
         diffChunks.push(makeSubChunk(subtractionChunk));
+    } else if (aIndex < a.length) {
+        diffChunks.push(makeSubChunk(a.substr(aIndex)));
     }
 
     if (bIndex < b.length) {
@@ -127,7 +129,7 @@ class TextDisplay extends React.Component {
                 <span className={className}>{c.value}</span>
             );
         });
-        return (<div>{textElements}</div>);
+        return (<div className="text-display">{textElements}</div>);
     }
 
 }
@@ -170,9 +172,14 @@ class TextCorrectionWidget extends React.Component {
     render() {
         return (
             <div>
-                <div><TextInput handleChange={this.handleSourceChange.bind(this)} /></div>
-                <div><TextInput handleChange={this.handleCorrectedChange.bind(this)} /></div>
-                <p><strong>Corrected</strong>:</p>
+                <div className="text-input">
+                    <p>Source</p>
+                    <TextInput handleChange={this.handleSourceChange.bind(this)} />
+                </div>
+                <div className="text-input">
+                    <p>Corrected</p>
+                    <TextInput handleChange={this.handleCorrectedChange.bind(this)} />
+                </div>
                 <TextDisplay diffChunks={this.state.diffChunks} />
             </div>
         );

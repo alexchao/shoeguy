@@ -1,3 +1,22 @@
+body {
+	font-family: "Helvetica Neue",Arial,sans-serif;
+	font-size: 1em;
+	line-height: 1.2em;
+}
+#shoeguy-container {
+	margin: 0 auto;
+	width: 400px;
+	padding: 2em 0;
+}
+.text-input {
+	margin: 0 0 1em;
+}
+.text-input input {
+	font-size: 1em;
+	line-height: 1.2em;
+	padding: 0.3em;
+	width: 400px;
+}
 .chunk-addition {
 	color: #008000;
 	border-bottom: 1px solid #aadaaa;
