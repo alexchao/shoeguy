@@ -58,6 +58,22 @@ const makeDiffString = function(a, b) {
         }
     }
 
+    // determine highest match length for each character in b
+    const rowMaxMatch = new Array(b.length);
+    var r = 0;
+    while (r < b.length) {
+        var rowMax = -1;
+        var c = 0;
+        while (c < a.length) {
+            if (m[c][r] > rowMax) {
+                rowMax = m[c][r];
+            }
+            c++;
+        }
+        rowMaxMatch[r] = rowMax;
+        r++;
+    }
+
     var aIndex = 0;
     var bIndex = 0;
     let diffChunks = [];
@@ -69,13 +85,13 @@ const makeDiffString = function(a, b) {
 
         var matchIndex = -1, k = bIndex;
         while (k < b.length && matchIndex === -1) {
-            if (m[aIndex][k] > 1) {
+            if (m[aIndex][k] > 0) {
                 matchIndex = k;
             }
             k++;
         }
 
-        if (matchIndex === -1) {
+        if (matchIndex === -1 || m[aIndex][matchIndex] < rowMaxMatch[matchIndex]) {
             subtractionChunk += a[aIndex];
             aIndex += 1;
         } else {
