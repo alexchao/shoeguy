@@ -78,44 +78,56 @@ const makeDiffString = function(a, b) {
     var bIndex = 0;
     let diffChunks = [];
 
-    var subtractionChunk = '';
     var additionChunk = '';
+    var subtractionChunk = '';
+    var sharedChunk = '';
 
     while (aIndex < a.length && bIndex < b.length) {
 
-        var matchIndex = -1, k = bIndex;
-        while (k < b.length && matchIndex === -1) {
-            if (m[aIndex][k] > 0) {
+        var matchMax = -1, matchIndex = -1, k = bIndex;
+        while (k < b.length) {
+            if (m[aIndex][k] > matchMax && m[aIndex][k] > 0) {
+                matchMax = m[aIndex][k];
                 matchIndex = k;
             }
             k++;
         }
 
         if (matchIndex === -1 || m[aIndex][matchIndex] < rowMaxMatch[matchIndex]) {
+            if (!!sharedChunk) {
+                diffChunks.push(makeSharedChunk(sharedChunk));
+                sharedChunk = '';
+            }
             subtractionChunk += a[aIndex];
-            aIndex += 1;
         } else {
             if (matchIndex > bIndex) {
+                if (!!sharedChunk) {
+                    diffChunks.push(makeSharedChunk(sharedChunk));
+                    sharedChunk = '';
+                }
                 additionChunk = b.substr(bIndex, matchIndex - bIndex);
+                // fast-forward bIndex
+                bIndex = matchIndex;
             }
-            // XXX: should this be inside the above if-statement?
-            bIndex = matchIndex;
 
             if (!!subtractionChunk) {
                 diffChunks.push(makeSubChunk(subtractionChunk));
                 subtractionChunk = '';
             }
+
             if (!!additionChunk) {
                 diffChunks.push(makeAddChunk(additionChunk));
                 additionChunk = '';
             }
 
-            var chunkLength = m[aIndex][bIndex];
-            diffChunks.push(makeSharedChunk(a.substr(aIndex, chunkLength)));
-
-            aIndex += chunkLength;
-            bIndex += chunkLength;
+            sharedChunk += a[aIndex];
+            bIndex += 1;
         }
+        aIndex += 1;
+    }
+
+    if (!!sharedChunk) {
+        diffChunks.push(makeSharedChunk(sharedChunk));
     }
 
     if (!!subtractionChunk) {
