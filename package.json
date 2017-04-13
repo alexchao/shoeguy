@@ -2,7 +2,7 @@
   "name": "shoeguy",
   "version": "1.0.0",
   "scripts": {
-    "build": "babel src -d lib"
+    "build": "babel src --out-file lib/index.js"
   },
   "devDependencies": {
     "babel-cli": "^6.0.0",
