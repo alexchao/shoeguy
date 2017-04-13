@@ -34,13 +34,13 @@ const makeSharedChunk = function(s) {
 };
 
 
-// TODO: refactor this beast
-const makeDiffString = function(a, b) {
-
+const computeMatrixAndOverlaps = function(a, b) {
     let m = new Array(a.length);
     for (var i = 0; i < m.length; i++) {
         m[i] = new Array(b.length);
     }
+
+    let overlapBlocks = [];
 
     // fill matrix
     // 1 if characters match, 0 if not
@@ -52,94 +52,167 @@ const makeDiffString = function(a, b) {
                 } else {
                     m[x][y] = 1;
                 }
+
+                // check if this is the tip of an overlapping block
+                if ((x === 0 || y === 0) || (a[x - 1] !== b[y - 1])) {
+                    overlapBlocks.push({
+                        id: makeOverlapId(x, y),
+                        aIndex: x,
+                        bIndex: y,
+                        length: m[x][y]
+                    });
+                }
             } else {
                 m[x][y] = 0;
             }
         }
     }
 
-    // determine highest match length for each character in b
-    const rowMaxMatch = new Array(b.length);
-    var r = 0;
-    while (r < b.length) {
-        var rowMax = -1;
-        var c = 0;
-        while (c < a.length) {
-            if (m[c][r] > rowMax) {
-                rowMax = m[c][r];
-            }
-            c++;
-        }
-        rowMaxMatch[r] = rowMax;
-        r++;
+    return {
+        matrix: m,
+        overlaps: overlapBlocks
+    };
+};
+
+
+const makeOverlapId = function(x, y) {
+    return x + '-' + y;
+};
+
+
+const overlapsHaveConflict = function(a, b) {
+    if (a.aIndex >= b.aIndex && a.bIndex <= b.bIndex) {
+        return true;
+    }
+    
+    if (a.aIndex <= b.aIndex && a.bIndex >= b.bIndex) {
+        return true;
     }
 
-    var aIndex = 0;
-    var bIndex = 0;
-    let diffChunks = [];
+    return false;
+};
 
-    var additionChunk = '';
-    var subtractionChunk = '';
-    var sharedChunk = '';
 
-    while (aIndex < a.length && bIndex < b.length) {
+const reduceOverlaps = function(overlaps) {
+    const idToOverlap = {};
+    overlaps.forEach(function(o) {
+        idToOverlap[o.id] = o;
+    });
 
-        var matchMax = -1, matchIndex = -1, k = bIndex;
-        while (k < b.length) {
-            if (m[aIndex][k] > matchMax && m[aIndex][k] > 0) {
-                matchMax = m[aIndex][k];
-                matchIndex = k;
+    let worstId = computeWorstOverlapId(overlaps);
+    let newOverlaps = overlaps;
+    while (!!worstId) {
+        delete idToOverlap[worstId];
+        newOverlaps = Object.keys(idToOverlap).map(function(id) {
+            return idToOverlap[id];
+        });
+        worstId = computeWorstOverlapId(newOverlaps);
+    }
+
+    return newOverlaps;
+};
+
+
+const computeWorstOverlapId = function(overlaps) {
+    const scores = {};
+    overlaps.forEach(function(o) {
+        scores[o.id] = 0;
+    });
+    const queue = overlaps.slice();
+    let o;
+    let max = -1;
+    let maxId;
+    while (queue.length > 0) {
+        o = queue.shift();
+        queue.forEach(function(p) {
+            if (overlapsHaveConflict(o, p)) {
+                scores[o.id] += p.length;
+                scores[p.id] += o.length;
+                [o.id, p.id].forEach(function(q) {
+                    if (scores[q] > max) {
+                        max = scores[q];
+                        maxId = q;
+                    }
+                });
             }
-            k++;
+        });
+    }
+    return maxId;
+};
+
+
+const makeDiffString = function(a, b) {
+
+    const results = computeMatrixAndOverlaps(a, b);
+    const bestOverlaps = reduceOverlaps(results.overlaps);
+
+    // assign overlaps to columns
+    const overlapsByColumn = new Array(a.length);
+    const overlapsByRow = new Array(b.length);
+    bestOverlaps.forEach(function(o) {
+        if (overlapsByColumn[o.aIndex]) {
+            throw 'Column already has an assigned overlap';
+        }
+        overlapsByColumn[o.aIndex] = o;
+
+        if (overlapsByRow[o.bIndex]) {
+            throw 'Row already has an assigned overlap';
+        }
+        overlapsByRow[o.bIndex] = o;
+    });
+
+    let aCursor = 0;
+    let bCursor = 0;
+    const diffChunks = [];
+
+    while (aCursor < a.length && bCursor < b.length) {
+        let oIndex = aCursor;
+        while (oIndex < a.length && !overlapsByColumn[oIndex]) {
+            oIndex++;
         }
 
-        if (matchIndex === -1 || m[aIndex][matchIndex] < rowMaxMatch[matchIndex]) {
-            if (!!sharedChunk) {
-                diffChunks.push(makeSharedChunk(sharedChunk));
-                sharedChunk = '';
-            }
-            subtractionChunk += a[aIndex];
+        if (oIndex !== aCursor) {
+            // add subtraction chunk and advance
+            diffChunks.push(
+                makeSubChunk(a.substr(aCursor, oIndex - aCursor)));
+            aCursor = oIndex;
         } else {
-            if (matchIndex > bIndex) {
-                if (!!sharedChunk) {
-                    diffChunks.push(makeSharedChunk(sharedChunk));
-                    sharedChunk = '';
-                }
-                additionChunk = b.substr(bIndex, matchIndex - bIndex);
-                // fast-forward bIndex
-                bIndex = matchIndex;
+            let overlap = overlapsByColumn[oIndex];
+
+            if (overlap.bIndex !== bCursor) {
+                diffChunks.push(
+                    makeAddChunk(b.substr(bCursor, overlap.bIndex - bCursor)));
+                bCursor = overlap.bIndex;
             }
 
-            if (!!subtractionChunk) {
-                diffChunks.push(makeSubChunk(subtractionChunk));
-                subtractionChunk = '';
+            // walk an overlap block until exhausted or another overlap is
+            // encountered. start one character in, since the first character
+            // should never have another overlap in the same row or column
+            let oLength = overlap.length - 1;
+            let x = overlap.aIndex + 1;
+            let y = overlap.bIndex + 1;
+            while (oLength > 0 && !overlapsByColumn[x] && !overlapsByRow[y]) {
+                oLength--;
+                x++;
+                y++;
             }
-
-            if (!!additionChunk) {
-                diffChunks.push(makeAddChunk(additionChunk));
-                additionChunk = '';
-            }
-
-            sharedChunk += a[aIndex];
-            bIndex += 1;
+            let chunkLength = x - aCursor;
+            diffChunks.push(
+                makeSharedChunk(a.substr(aCursor, chunkLength)));
+            aCursor += chunkLength;
+            bCursor += chunkLength;
         }
-        aIndex += 1;
+        
     }
 
-    if (!!sharedChunk) {
-        diffChunks.push(makeSharedChunk(sharedChunk));
+    if (aCursor < a.length) {
+        diffChunks.push(makeSubChunk(a.substr(aCursor)));
     }
 
-    if (!!subtractionChunk) {
-        diffChunks.push(makeSubChunk(subtractionChunk));
-    } else if (aIndex < a.length) {
-        diffChunks.push(makeSubChunk(a.substr(aIndex)));
+    if (bCursor < b.length) {
+        diffChunks.push(makeAddChunk(b.substr(bCursor)));
     }
-
-    if (bIndex < b.length) {
-        diffChunks.push(makeAddChunk(b.substr(bIndex)));
-    }
-
+    
     return diffChunks;
 };
 
@@ -193,7 +266,9 @@ class TextCorrectionWidget extends React.Component {
     }
 
     updateDiffText() {
-        let diffChunks = makeDiffString(this.state.sourceText, this.state.correctedText);
+        let diffChunks = makeDiffString(
+            this.state.sourceText,
+            this.state.correctedText);
         this.setState({ diffChunks: diffChunks });
     }
 
