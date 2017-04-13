@@ -196,12 +196,12 @@ const makeDiffString = function(a, b) {
             let foundNewOverlap = false;
             while (oLength > 0 && !foundNewOverlap) {
                 let cOverlap = overlapsByColumn[x];
-                if (cOverlap && cOverlap.length > oLength) {
+                if (cOverlap && cOverlap.length > oLength && cOverlap.bIndex > y) {
                     foundNewOverlap = true;
                 }
 
                 let rOverlap = overlapsByRow[y];
-                if (rOverlap && rOverlap.length > oLength) {
+                if (rOverlap && rOverlap.length > oLength && rOverlap.aIndex > x) {
                     foundNewOverlap = true;
                 }
 
