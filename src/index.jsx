@@ -188,14 +188,28 @@ const makeDiffString = function(a, b) {
 
             // walk an overlap block until exhausted or another overlap is
             // encountered. start one character in, since the first character
-            // should never have another overlap in the same row or column
+            // should never have another overlap in the same row or column.
+            // skip new overlaps if they aren't longer than the current one.
             let oLength = overlap.length - 1;
             let x = overlap.aIndex + 1;
             let y = overlap.bIndex + 1;
-            while (oLength > 0 && !overlapsByColumn[x] && !overlapsByRow[y]) {
-                oLength--;
-                x++;
-                y++;
+            let foundNewOverlap = false;
+            while (oLength > 0 && !foundNewOverlap) {
+                let cOverlap = overlapsByColumn[x];
+                if (cOverlap && cOverlap.length > oLength) {
+                    foundNewOverlap = true;
+                }
+
+                let rOverlap = overlapsByRow[y];
+                if (rOverlap && rOverlap.length > oLength) {
+                    foundNewOverlap = true;
+                }
+
+                if (!foundNewOverlap) {
+                    oLength--;
+                    x++;
+                    y++;
+                }
             }
             let chunkLength = x - aCursor;
             diffChunks.push(
