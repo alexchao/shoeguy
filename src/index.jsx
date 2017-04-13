@@ -34,7 +34,7 @@ const makeSharedChunk = function(s) {
 };
 
 
-const computeMatrixAndOverlaps = function(a, b) {
+const computeOverlaps = function(a, b) {
     let m = new Array(a.length);
     for (var i = 0; i < m.length; i++) {
         m[i] = new Array(b.length);
@@ -68,10 +68,10 @@ const computeMatrixAndOverlaps = function(a, b) {
         }
     }
 
-    return {
-        matrix: m,
-        overlaps: overlapBlocks
-    };
+    // remove overlaps that are just 1-character long. these usually
+    // don't represent intentional preservations of the original string,
+    // unless the strings are very short.
+    return overlapBlocks.filter(function(o) { return o.length > 1; });
 };
 
 
@@ -141,10 +141,11 @@ const computeWorstOverlapId = function(overlaps) {
 };
 
 
+// TODO: put this in its own namespace or module
 const makeDiffString = function(a, b) {
 
-    const results = computeMatrixAndOverlaps(a, b);
-    const bestOverlaps = reduceOverlaps(results.overlaps);
+    const overlaps = computeOverlaps(a, b);
+    const bestOverlaps = reduceOverlaps(overlaps);
 
     // assign overlaps to columns
     const overlapsByColumn = new Array(a.length);
