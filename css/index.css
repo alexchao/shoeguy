@@ -3,10 +3,18 @@ body {
 	font-size: 1em;
 	line-height: 1.2em;
 }
-#shoeguy-container {
+#container {
 	margin: 0 auto;
 	width: 400px;
-	padding: 2em 0;
+	padding: 5em 0 2em;
+}
+h1 {
+	font-size: 500%;
+	font-weight: bold;
+	text-align: center;
+	margin: 0 0 1em;
+}
+#shoeguy-container {
 }
 .text-input {
 	margin: 0 0 1em;
