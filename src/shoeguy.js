@@ -13,6 +13,16 @@ const ShoeGuy = (function() {
     };
 
 
+    /**
+     * Figure out where the strings have overlapping sequences of characters.
+     * Return an array of "overlap" objects:
+     *   {
+     *     id (String unique identifier),
+     *     aIndex (where the sequence occurs in string a)
+     *     bIndex (where the sequence occurs in string b)
+     *     length (the length of the sequence)
+     *   }
+     */
     const computeOverlaps = function(a, b) {
         let m = new Array(a.length);
         for (var i = 0; i < m.length; i++) {
@@ -21,8 +31,13 @@ const ShoeGuy = (function() {
 
         let overlapBlocks = [];
 
-        // fill matrix
-        // 1 if characters match, 0 if not
+        /**
+         * Fill matrix
+         * + 1 if characters match, 0 if not
+         * + an overlapping sequence is represented by a diagonal of 1s
+         * + increment each successive overlapping character till the overlap
+         *   sequence is broken
+         */
         for (var x = a.length - 1; x >= 0; x--) {
             for (var y = b.length - 1; y >= 0; y--) {
                 if (a[x] === b[y]) {
@@ -59,6 +74,12 @@ const ShoeGuy = (function() {
     };
 
 
+    /**
+     * Two overlap sequences are in conflict with each other if choosing
+     * to use one in the final string precludes using the other. This is
+     * the case if one overlap occurs early in string a and late in string b,
+     * while the other occurs late in string a and early in string b.
+     */
     const overlapsHaveConflict = function(a, b) {
         if (a.aIndex >= b.aIndex && a.bIndex <= b.bIndex) {
             return true;
@@ -72,6 +93,12 @@ const ShoeGuy = (function() {
     };
 
 
+    /**
+     * This the greedy meat of the algorithm.
+     * Given an array of overlaps, find the worst among them (i.e. has the
+     * highest conflict score w.r.t. the other overlaps) and remove it.
+     * Continue until the remaining overlaps have no conflicts.
+     */
     const reduceOverlaps = function(overlaps) {
         const idToOverlap = {};
         overlaps.forEach(function(o) {
@@ -92,6 +119,11 @@ const ShoeGuy = (function() {
     };
 
 
+    /**
+     * Find the worst overlap in a set of overlap sequences.
+     * Compute a conflict score for a given overlap by summing the length
+     * of all other overlap sequences that this overlap conflicts with.
+     */
     const computeWorstOverlapId = function(overlaps) {
         const scores = {};
         overlaps.forEach(function(o) {
